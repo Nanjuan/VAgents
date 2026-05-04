@@ -1,13 +1,17 @@
 "use strict";
 
 const API = "";
-const APP_VERSION = "3";
+const APP_VERSION = "5";
+
+const LM_MAX_TOKENS_STORAGE = "vagents_lmstudio_max_tokens_by_model";
 
 let projects = [];
 let profiles = [];
 let activeProject = null;
 let sending = false;
 let activeLmStudioModel = null;
+/** Server clamp + default from models.yaml (lmstudio-default) */
+let lmTokenLimits = { default_max_tokens: 8192, absolute_max: 262144, absolute_min: 256 };
 let activeServerName = null;
 let editingServerName = null;
 
@@ -22,6 +26,61 @@ const REQUIRED_IDS = [
 
 function $(id) {
   return dom[id] || null;
+}
+
+function readLmMaxTokensMap() {
+  try {
+    const raw = localStorage.getItem(LM_MAX_TOKENS_STORAGE);
+    const o = raw ? JSON.parse(raw) : {};
+    return o && typeof o === "object" ? o : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveMaxTokensForModel(modelId, value) {
+  if (!modelId) return;
+  const m = readLmMaxTokensMap();
+  m[modelId] = value;
+  localStorage.setItem(LM_MAX_TOKENS_STORAGE, JSON.stringify(m));
+}
+
+function getSavedMaxTokensForModel(modelId) {
+  if (!modelId) return null;
+  const v = readLmMaxTokensMap()[modelId];
+  return v != null ? Number(v) : null;
+}
+
+function clampLmMaxTokens(n) {
+  const lo = lmTokenLimits.absolute_min ?? 256;
+  const hi = lmTokenLimits.absolute_max ?? 262144;
+  let v = Math.floor(Number(n));
+  if (!Number.isFinite(v)) v = lmTokenLimits.default_max_tokens ?? 8192;
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function applyMaxTokensInputForModel(modelId) {
+  const input = $("lms-max-tokens");
+  if (!input) return;
+  const saved = modelId ? getSavedMaxTokensForModel(modelId) : null;
+  const val = saved != null ? saved : lmTokenLimits.default_max_tokens;
+  input.min = String(lmTokenLimits.absolute_min ?? 256);
+  input.max = String(lmTokenLimits.absolute_max ?? 262144);
+  input.step = "256";
+  input.value = String(clampLmMaxTokens(val));
+}
+
+async function fetchLmTokenDefaults() {
+  try {
+    const d = await api("GET", "/api/lmstudio/token-defaults");
+    lmTokenLimits = {
+      default_max_tokens: d.default_max_tokens ?? 8192,
+      absolute_max: d.absolute_max ?? 262144,
+      absolute_min: d.absolute_min ?? 256,
+    };
+  } catch {
+    /* keep lmTokenLimits as-is */
+  }
 }
 
 function bindClick(id, handler) {
@@ -138,8 +197,11 @@ function appendToolCard(tc) {
 function appendApprovalCard(req) {
   const m = $("messages");
   if (!m) return;
+  const aid = String(req.approval_id ?? "");
+  if (aid && [...m.querySelectorAll(".approval-card")].some(el => el.getAttribute("data-approval-id") === aid)) return;
   const card = document.createElement("div");
   card.className = "approval-card";
+  if (aid) card.dataset.approvalId = aid;
   card.innerHTML = `
     <div class="approval-title">⚠ Approval Required</div>
     <div class="approval-tool">${esc(req.tool_id)}</div>
@@ -154,6 +216,7 @@ function appendApprovalCard(req) {
       const r = await api("POST", `/api/mcp/approvals/${req.approval_id}/approve`);
       card.querySelector(".approval-actions").innerHTML = `<span class="status-ok">✓ Approved</span>`;
       if (r?.tool_result) appendToolCard({ tool_id: req.tool_id, ...r.tool_result });
+      await continueAgentTurn();
     } catch (e) {
       card.querySelector(".approval-actions").innerHTML = `<span class="status-error">Failed: ${esc(e.message)}</span>`;
     }
@@ -163,6 +226,7 @@ function appendApprovalCard(req) {
     try {
       await api("POST", `/api/mcp/approvals/${req.approval_id}/deny`);
       card.querySelector(".approval-actions").innerHTML = `<span class="status-error">✗ Denied</span>`;
+      await continueAgentTurn();
     } catch (e) {
       card.querySelector(".approval-actions").innerHTML = `<span class="status-error">Failed: ${esc(e.message)}</span>`;
     }
@@ -264,6 +328,46 @@ async function selectProject(project) {
   input?.focus();
 }
 
+function applyChatResult(result) {
+  if (result.tool_calls_made?.length) {
+    result.tool_calls_made.forEach(tc => appendToolCard(tc));
+  }
+  if (result.requires_approval?.length) {
+    result.requires_approval.forEach(req => appendApprovalCard(req));
+  }
+  if (result.content) appendAssistantBubble(result.content);
+}
+
+/** Resume the agent after MCP tools ran (approve/deny) — no new user message */
+async function continueAgentTurn() {
+  if (sending || !activeProject) return;
+  sending = true;
+  const typingEl = appendTyping();
+  scrollToBottom();
+  try {
+    const chatBody = {
+      message: "",
+      continuation: true,
+      profile_name: activeProject.active_profile,
+    };
+    if (activeLmStudioModel) {
+      chatBody.lmstudio_model = activeLmStudioModel;
+      const mt = $("lms-max-tokens");
+      if (mt) chatBody.max_tokens = clampLmMaxTokens(mt.value);
+    }
+    const result = await api("POST", `/api/chat/${activeProject.id}`, chatBody);
+    typingEl?.remove();
+    applyChatResult(result);
+  } catch (e) {
+    typingEl?.remove();
+    appendAssistantBubble(`⚠️ Error: ${e.message}`);
+  } finally {
+    sending = false;
+    scrollToBottom();
+    $("msg-input")?.focus();
+  }
+}
+
 async function sendMessage() {
   if (sending || !activeProject) return;
   const input = $("msg-input");
@@ -288,17 +392,14 @@ async function sendMessage() {
 
   try {
     const chatBody = { message: text, profile_name: activeProject.active_profile };
-    if (activeLmStudioModel) chatBody.lmstudio_model = activeLmStudioModel;
+    if (activeLmStudioModel) {
+      chatBody.lmstudio_model = activeLmStudioModel;
+      const mt = $("lms-max-tokens");
+      if (mt) chatBody.max_tokens = clampLmMaxTokens(mt.value);
+    }
     const result = await api("POST", `/api/chat/${activeProject.id}`, chatBody);
     typingEl?.remove();
-
-    if (result.tool_calls_made?.length) {
-      result.tool_calls_made.forEach(tc => appendToolCard(tc));
-    }
-    if (result.requires_approval?.length) {
-      result.requires_approval.forEach(req => appendApprovalCard(req));
-    }
-    if (result.content) appendAssistantBubble(result.content);
+    applyChatResult(result);
   } catch (e) {
     typingEl?.remove();
     appendAssistantBubble(`⚠️ Error: ${e.message}`);
@@ -701,6 +802,11 @@ async function lmRefreshModels() {
       const opt = [...lmSelect.options].find(o => o.value === activeLmStudioModel);
       if (opt) lmSelect.value = activeLmStudioModel;
     }
+    const selId =
+      (activeLmStudioModel && [...lmSelect.options].some(o => o.value === activeLmStudioModel))
+        ? activeLmStudioModel
+        : (lmSelect.value || null);
+    applyMaxTokensInputForModel(selId);
   } catch (e) {
     lmDot.className = "offline";
     lmSelect.innerHTML = `<option value="">— not connected —</option>`;
@@ -747,6 +853,8 @@ function lmUseModel() {
   const modelId = lmSelect.value;
   if (!modelId) return;
   activeLmStudioModel = modelId;
+  const mt = $("lms-max-tokens");
+  if (mt) saveMaxTokensForModel(modelId, clampLmMaxTokens(mt.value));
   badge.textContent = `Using: ${modelId}`;
   badge.classList.add("visible");
   lmMsg.className = "ok";
@@ -817,6 +925,11 @@ function bindAll() {
   bindClick("lms-refresh", lmRefreshModels);
   bindClick("lms-load-btn", lmLoadModel);
   bindClick("lms-use-btn", lmUseModel);
+  bindEvent("lms-select", "change", () => {
+    const sel = $("lms-select");
+    const v = sel?.value;
+    applyMaxTokensInputForModel(v || null);
+  });
 }
 
 function checkRequiredDom() {
@@ -833,6 +946,9 @@ async function boot() {
   if (!checkRequiredDom()) return;
 
   bindAll();
+
+  await fetchLmTokenDefaults();
+  applyMaxTokensInputForModel(null);
 
   try {
     [profiles, projects] = await Promise.all([fetchProfiles(), fetchProjects()]);

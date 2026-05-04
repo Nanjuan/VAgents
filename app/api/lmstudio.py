@@ -1,7 +1,14 @@
+import yaml
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.config.settings import get_settings
+from app.llm.token_limits import (
+    MAX_CHAT_MAX_TOKENS,
+    MIN_CHAT_MAX_TOKENS,
+    LMSTUDIO_YAML_KEY,
+    yaml_default_max_tokens,
+)
 
 router = APIRouter(prefix="/lmstudio", tags=["lmstudio"])
 
@@ -46,6 +53,21 @@ async def _post(path: str, body: dict, base: str | None = None, timeout: float =
         )
         r.raise_for_status()
         return r.json()
+
+
+@router.get("/token-defaults")
+async def token_defaults():
+    """Defaults for max output tokens (from models.yaml lmstudio-default) and server clamp range."""
+    settings = get_settings()
+    with open(settings.config_dir / "models.yaml") as f:
+        models_data = yaml.safe_load(f) or {}
+    default_max = yaml_default_max_tokens(models_data, LMSTUDIO_YAML_KEY)
+    return {
+        "default_max_tokens": default_max,
+        "absolute_max": MAX_CHAT_MAX_TOKENS,
+        "absolute_min": MIN_CHAT_MAX_TOKENS,
+        "yaml_model_key": LMSTUDIO_YAML_KEY,
+    }
 
 
 @router.get("/status")

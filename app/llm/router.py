@@ -60,13 +60,23 @@ class ModelRouter:
         model_key: str,
         messages: list[dict],
         tools: list[dict] | None = None,
+        max_tokens_override: int | None = None,
     ) -> dict:
         model_cfg = self._models.get(model_key)
         if not model_cfg:
             raise ValueError(f"Model key '{model_key}' not found in models.yaml")
 
-        provider = self._build_provider(model_cfg["provider"], model_cfg)
-        return await provider.chat(messages, tools, model_cfg)
+        cfg = dict(model_cfg)
+        if max_tokens_override is not None:
+            cfg["max_tokens"] = max_tokens_override
+
+        provider = self._build_provider(cfg["provider"], cfg)
+        return await provider.chat(messages, tools, cfg)
+
+    def get_model_config(self, model_key: str) -> dict:
+        """Return a shallow copy of the models.yaml entry for this key, or {}."""
+        cfg = self._models.get(model_key)
+        return dict(cfg) if cfg else {}
 
     def get_provider_type(self, model_key: str) -> str:
         model_cfg = self._models.get(model_key, {})

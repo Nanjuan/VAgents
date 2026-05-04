@@ -14,15 +14,18 @@ from app.llm.router import ModelRouter
 from app.tools.manager import NativeToolManager
 from app.tools.gateway import ToolGateway
 from app.mcp_client.client_manager import MCPClientManager
+from app.llm.token_limits import resolve_effective_max_tokens
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = ""
     profile_name: str | None = None
     lmstudio_model: str | None = None  # model id from LM Studio, overrides profile default
+    max_tokens: int | None = None  # optional override; clamped server-side
+    continuation: bool = False  # resume agent turn after MCP approvals (no new user text)
 
 
 def _build_orchestrator() -> AgentOrchestrator:
@@ -50,6 +53,9 @@ async def chat(
     if not profile_mgr.validate_profile(profile_name):
         raise HTTPException(status_code=400, detail=f"Profile '{profile_name}' not found")
 
+    if not body.continuation and not (body.message or "").strip():
+        raise HTTPException(status_code=400, detail="message is required unless continuation is true")
+
     import yaml
     from app.config.settings import get_settings
     settings = get_settings()
@@ -61,16 +67,20 @@ async def chat(
     profile_cfg = profiles_data["profiles"][profile_name]
     model_key = profile_cfg.get("default_model", "local-default")
 
+    effective_max = resolve_effective_max_tokens(body.max_tokens, models_data, model_key)
+
     context = AgentContext(
         project_id=project_id,
         profile_name=profile_name,
         model_key=model_key,
         lmstudio_model_id=body.lmstudio_model or None,
+        max_tokens=effective_max,
+        continuation=body.continuation,
     )
 
     orchestrator = _build_orchestrator()
     try:
-        result = await orchestrator.run_turn(context, body.message, session)
+        result = await orchestrator.run_turn(context, body.message or "", session)
     except Exception as e:
         logger.exception("chat turn failed")
         raise HTTPException(

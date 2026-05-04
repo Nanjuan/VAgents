@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VAgents</title>
-  <link rel="stylesheet" href="/ui/style.css?v=3" />
+  <link rel="stylesheet" href="/ui/style.css?v=5" />
 </head>
 <body>
 <div id="app">
@@ -50,6 +50,10 @@
           <select id="lms-select" disabled>
             <option value="">— not connected —</option>
           </select>
+          <label class="lms-max-row" for="lms-max-tokens">
+            <span class="lms-max-label">Max output tokens</span>
+            <input id="lms-max-tokens" type="number" min="256" max="262144" step="256" value="8192" title="Saved per model when you click Use" />
+          </label>
           <div id="lms-actions">
             <button id="lms-load-btn" disabled>Load</button>
             <button id="lms-use-btn" disabled>Use</button>
@@ -190,6 +194,6 @@
 
   </main>
 </div>
-<script src="/ui/app.js?v=3"></script>
+<script src="/ui/app.js?v=5"></script>
 </body>
 </html>

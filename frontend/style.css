@@ -268,6 +268,29 @@ button:disabled { cursor: not-allowed; }
 #lms-select option { background: var(--bg2); }
 #lms-select:disabled { opacity: 0.5; }
 
+.lms-max-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lms-max-label {
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 500;
+}
+#lms-max-tokens {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 7px 9px;
+  font-size: 12px;
+  font-family: var(--mono);
+  box-sizing: border-box;
+}
+#lms-max-tokens:focus { outline: none; border-color: var(--accent); }
+
 #lms-actions { display: flex; gap: 8px; }
 
 #lms-load-btn, #lms-use-btn {

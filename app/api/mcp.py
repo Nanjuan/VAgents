@@ -250,6 +250,26 @@ async def deny_tool(approval_id: str, session: Session = Depends(get_session)):
 
     mgr = ApprovalManager()
     mgr.deny(approval_id, session)
+
+    args = json.loads(req.arguments_json) if req.arguments_json else {}
+    tid = req.tool_id or ""
+    if not tid:
+        tid = (
+            f"mcp:{req.server_name}.{req.tool_name}"
+            if req.server_name
+            else f"native:{req.tool_name}"
+        )
+
+    mem = AgentMemory()
+    mem.save_message(
+        req.project_id,
+        "tool",
+        json.dumps({"error": "User denied this tool call.", "denied": True}),
+        session,
+        tool_call_id=req.tool_call_id,
+        tool_name=tid,
+        tool_args=args,
+    )
     record_approval_event(session, req.project_id, approval_id, "denied")
     return {"status": "denied", "approval_id": approval_id}
 

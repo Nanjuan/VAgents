@@ -5,7 +5,7 @@ models:
   lmstudio-default:
     provider: lmstudio
     model_id: lmstudio          # placeholder — LM Studio uses whatever is loaded
-    max_tokens: 8192
+    max_tokens: 131072
     temperature: 0.7
     supports_tools: true
     timeout_seconds: 300
