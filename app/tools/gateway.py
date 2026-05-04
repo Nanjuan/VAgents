@@ -1,6 +1,24 @@
+import logging
 import uuid
-from app.tools.schemas import ToolDefinition, ToolCallResult, ToolType
+
+from app.security.approvals import ApprovalManager
 from app.tools.manager import NativeToolManager
+from app.tools.schemas import ToolCallResult, ToolDefinition
+
+logger = logging.getLogger(__name__)
+
+
+def _split_tool_id(tool_id: str) -> tuple[str, str | None, str]:
+    """Returns tool_type, server_name or None, short tool name for ApprovalRequest."""
+    if tool_id.startswith("native:"):
+        return "native", None, tool_id[len("native:") :]
+    if tool_id.startswith("mcp:"):
+        rest = tool_id[4:]
+        dot = rest.find(".")
+        if dot == -1:
+            return "mcp", None, rest
+        return "mcp", rest[:dot], rest[dot + 1 :]
+    return "unknown", None, tool_id
 
 
 class ToolGateway:
@@ -22,8 +40,8 @@ class ToolGateway:
         if self._mcp is not None:
             try:
                 mcp_tools = await self._mcp.list_tools_for_profile(profile_name)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("MCP list_tools failed for profile %s: %s", profile_name, e)
         return native_tools + mcp_tools
 
     async def request_tool_call(
@@ -32,6 +50,9 @@ class ToolGateway:
         tool_id: str,
         arguments: dict,
         reason: str,
+        session=None,
+        project_id: str | None = None,
+        tool_call_id: str | None = None,
     ) -> dict:
         all_tools = await self.list_tools(profile_name)
         tool_map = {t.tool_id: t for t in all_tools}
@@ -41,6 +62,23 @@ class ToolGateway:
             return {"status": "error", "error": f"Tool '{tool_id}' not available for profile '{profile_name}'"}
 
         if tool_def.requires_approval:
+            if session is not None and project_id is not None:
+                tt, sn, tn = _split_tool_id(tool_id)
+                am = ApprovalManager()
+                req = am.create_request(
+                    project_id,
+                    tt,
+                    sn,
+                    tn,
+                    arguments,
+                    reason,
+                    session,
+                    profile_name=profile_name,
+                    tool_id=tool_id,
+                    tool_call_id=tool_call_id,
+                )
+                return {"status": "pending_approval", "approval_id": req.id}
+
             approval_id = str(uuid.uuid4())
             self._pending[approval_id] = {
                 "profile_name": profile_name,

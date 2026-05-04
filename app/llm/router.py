@@ -44,9 +44,10 @@ class ModelRouter:
         elif provider_name == "lmstudio":
             # OpenAI-compatible endpoint — uses LM_STUDIO_BASE_URL from settings
             from app.llm.openai_compatible_provider import OpenAICompatibleProvider
+            api_key = settings.lm_studio_api_key or "lm-studio"
             provider = OpenAICompatibleProvider(
                 base_url=settings.lm_studio_base_url,
-                api_key="lm-studio",  # LM Studio ignores the key
+                api_key=api_key,
             )
         else:
             raise ValueError(f"Unknown provider: {provider_name}")
@@ -82,9 +83,12 @@ class ModelRouter:
     ) -> dict:
         """Route to any OpenAI-compatible endpoint with an explicit model id (e.g. LM Studio)."""
         from app.llm.openai_compatible_provider import OpenAICompatibleProvider
-        cache_key = f"openai_compatible:{base_url}"
+
+        settings = get_settings()
+        api_key = (settings.lm_studio_api_key or "").strip() or "not-needed"
+        cache_key = f"openai_compatible:{base_url}:{api_key[:32]}"
         if cache_key not in self._providers:
-            self._providers[cache_key] = OpenAICompatibleProvider(base_url=base_url)
+            self._providers[cache_key] = OpenAICompatibleProvider(base_url=base_url, api_key=api_key)
         provider = self._providers[cache_key]
         model_cfg = {"model_id": model_id, "max_tokens": max_tokens, "temperature": temperature}
         return await provider.chat(messages, tools, model_cfg)

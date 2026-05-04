@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
     lm_studio_base_url: str = "http://localhost:1234/v1"
+    # Optional bearer token for LM Studio / reverse proxies that require Authorization
+    lm_studio_api_key: str = ""
     database_url: str = "sqlite:///./vagents.db"
     secret_key: str = "change-me"
     environment: str = "development"

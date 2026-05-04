@@ -1,9 +1,21 @@
 import asyncio
+import logging
 import os
+import sys
 from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+logger = logging.getLogger(__name__)
+
+
+def _resolve_command(command: str | None) -> str:
+    """Use the current interpreter when the config says bare 'python' so MCP servers
+    inherit the same venv (otherwise stdio subprocess hits system Python without deps)."""
+    if not command or command in ("python", "python3"):
+        return sys.executable
+    return command
 
 from app.mcp_client.schemas import MCPServerConfig
 from app.mcp_client.server_registry import MCPServerRegistry
@@ -36,7 +48,7 @@ class MCPClientManager:
         """Context manager that yields a live ClientSession for a stdio server."""
         env = {**os.environ, **server_config.env}
         params = StdioServerParameters(
-            command=server_config.command or "python",
+            command=_resolve_command(server_config.command),
             args=server_config.args,
             env=env,
         )
@@ -59,8 +71,10 @@ class MCPClientManager:
                     if check_tool_allowed(allowed_mcp_tools, server_config.name, tool.name):
                         results.append(mcp_tool_to_tool_definition(server_config.name, tool, server_config))
             except Exception as e:
-                # Server unavailable — skip silently
-                pass
+                logger.warning(
+                    "MCP server '%s' unavailable for profile '%s': %s",
+                    server_config.name, profile_name, e,
+                )
 
         return results
 
@@ -74,7 +88,7 @@ class MCPClientManager:
     async def _list_tools_stdio(self, server_config: MCPServerConfig) -> list[Any]:
         env = {**os.environ, **server_config.env}
         params = StdioServerParameters(
-            command=server_config.command or "python",
+            command=_resolve_command(server_config.command),
             args=server_config.args,
             env=env,
         )
@@ -140,7 +154,7 @@ class MCPClientManager:
     async def _call_tool_stdio(self, server_config: MCPServerConfig, tool_name: str, arguments: dict) -> Any:
         env = {**os.environ, **server_config.env}
         params = StdioServerParameters(
-            command=server_config.command or "python",
+            command=_resolve_command(server_config.command),
             args=server_config.args,
             env=env,
         )
@@ -171,6 +185,9 @@ class MCPClientManager:
                 return result
 
     async def test_server(self, server_name: str) -> dict:
+        if not self._loaded:
+            settings = get_settings()
+            await self.load_servers(str(settings.config_dir / "mcp_servers.yaml"))
         server_config = self._registry.get(server_name)
         if not server_config:
             return {"status": "error", "error": f"Server '{server_name}' not configured"}

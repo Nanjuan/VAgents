@@ -1,3 +1,4 @@
+import json
 import re
 import yaml
 from pathlib import Path
@@ -5,11 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from app.agent.memory import AgentMemory
 from app.config.settings import get_settings
 from app.db.database import get_session
-from app.db.models import ApprovalRequest
+from app.db.models import ApprovalRequest, Project
 from app.mcp_client.client_manager import MCPClientManager
 from app.security.approvals import ApprovalManager
+from app.security.audit_service import record_approval_event, record_tool_run
 from app.tools.gateway import ToolGateway
 from app.tools.manager import NativeToolManager
 
@@ -183,22 +186,72 @@ async def call_mcp_tool(
 
 @router.post("/mcp/approvals/{approval_id}/approve")
 async def approve_tool(approval_id: str, session: Session = Depends(get_session)):
+    req = session.get(ApprovalRequest, approval_id)
+    if not req:
+        raise HTTPException(404, detail="Approval request not found")
+    if req.status != "pending":
+        raise HTTPException(400, detail=f"Approval already {req.status}")
+
     mgr = ApprovalManager()
-    try:
-        req = mgr.approve(approval_id, session)
-    except ValueError as e:
-        raise HTTPException(404, str(e))
-    return {"status": "approved", "approval_id": req.id}
+    mgr.approve(approval_id, session)
+
+    args = json.loads(req.arguments_json) if req.arguments_json else {}
+    tid = req.tool_id or ""
+    if not tid:
+        tid = (
+            f"mcp:{req.server_name}.{req.tool_name}"
+            if req.server_name
+            else f"native:{req.tool_name}"
+        )
+
+    profile_name = (req.profile_name or "").strip()
+    if not profile_name:
+        proj = session.get(Project, req.project_id)
+        profile_name = proj.active_profile if proj else "general_assistant"
+
+    gateway = _build_gateway()
+    result = await gateway.execute_tool_call(None, profile_name, tid, args)
+    record_tool_run(
+        session,
+        req.project_id,
+        profile_name,
+        tid,
+        args,
+        result,
+        approved_by_user=True,
+    )
+
+    mem = AgentMemory()
+    mem.save_message(
+        req.project_id,
+        "tool",
+        json.dumps({"result": result.result, "error": result.error}),
+        session,
+        tool_call_id=req.tool_call_id,
+        tool_name=tid,
+        tool_args=args,
+    )
+    record_approval_event(session, req.project_id, approval_id, "approved")
+
+    return {
+        "status": "approved",
+        "approval_id": req.id,
+        "tool_result": result.model_dump(),
+    }
 
 
 @router.post("/mcp/approvals/{approval_id}/deny")
 async def deny_tool(approval_id: str, session: Session = Depends(get_session)):
+    req = session.get(ApprovalRequest, approval_id)
+    if not req:
+        raise HTTPException(404, detail="Approval request not found")
+    if req.status != "pending":
+        raise HTTPException(400, detail=f"Approval already {req.status}")
+
     mgr = ApprovalManager()
-    try:
-        req = mgr.deny(approval_id, session)
-    except ValueError as e:
-        raise HTTPException(404, str(e))
-    return {"status": "denied", "approval_id": req.id}
+    mgr.deny(approval_id, session)
+    record_approval_event(session, req.project_id, approval_id, "denied")
+    return {"status": "denied", "approval_id": approval_id}
 
 
 @router.get("/mcp/approvals/{project_id}/pending")

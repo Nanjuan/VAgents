@@ -1,12 +1,17 @@
 import json
+import logging
 from sqlmodel import Session
+
 from app.agent.context import AgentContext
 from app.agent.memory import AgentMemory
 from app.agent.prompts import build_system_prompt
 from app.agent.profile_manager import ProfileManager
 from app.llm.router import ModelRouter
+from app.security.audit_service import record_tool_run
 from app.tools.gateway import ToolGateway
 from app.tools.schemas import ToolDefinition
+
+logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ITERATIONS = 10
 
@@ -103,8 +108,36 @@ class AgentOrchestrator:
                     "requires_approval": requires_approval,
                 }
 
-            # Append assistant message with tool calls
-            messages.append({"role": "assistant", "content": content or ""})
+            # Persist assistant turn that requested tools (reload + approvals need this)
+            self._memory.save_message(
+                context.project_id,
+                "assistant",
+                content or "",
+                session,
+                tool_calls=raw_tool_calls,
+            )
+
+            oa_tool_calls = []
+            for tc in raw_tool_calls:
+                oa_tool_calls.append(
+                    {
+                        "id": tc["id"],
+                        "type": "function",
+                        "function": {
+                            "name": tc["name"],
+                            "arguments": json.dumps(tc.get("arguments", {}))
+                            if isinstance(tc.get("arguments"), dict)
+                            else str(tc.get("arguments", "")),
+                        },
+                    }
+                )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": content if content else None,
+                    "tool_calls": oa_tool_calls,
+                }
+            )
 
             for tc in raw_tool_calls:
                 llm_tool_name = tc["name"]
@@ -113,7 +146,13 @@ class AgentOrchestrator:
                 call_id = tc.get("id", "")
 
                 gate_result = await self._gateway.request_tool_call(
-                    context.profile_name, tool_id, arguments, reason="agent tool call"
+                    context.profile_name,
+                    tool_id,
+                    arguments,
+                    reason="agent tool call",
+                    session=session,
+                    project_id=context.project_id,
+                    tool_call_id=call_id or None,
                 )
 
                 if gate_result.get("status") == "pending_approval":
@@ -126,6 +165,18 @@ class AgentOrchestrator:
                     exec_result = await self._gateway.execute_tool_call(
                         None, context.profile_name, tool_id, arguments
                     )
+                    try:
+                        record_tool_run(
+                            session,
+                            context.project_id,
+                            context.profile_name,
+                            tool_id,
+                            arguments,
+                            exec_result,
+                            approved_by_user=False,
+                        )
+                    except Exception:
+                        logger.exception("record_tool_run failed")
                     tool_result_content = json.dumps(
                         {"result": exec_result.result, "error": exec_result.error}
                     )
@@ -144,6 +195,7 @@ class AgentOrchestrator:
                         session,
                         tool_name=tool_id,
                         tool_args=arguments,
+                        tool_call_id=call_id or None,
                     )
 
                 # Add tool result back to messages

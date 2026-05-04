@@ -14,14 +14,21 @@ class ApprovalManager:
         arguments: dict,
         reason: str,
         session: Session,
+        *,
+        profile_name: str = "",
+        tool_id: str = "",
+        tool_call_id: str | None = None,
     ) -> ApprovalRequest:
         req = ApprovalRequest(
             project_id=project_id,
+            profile_name=profile_name,
+            tool_id=tool_id,
             tool_type=tool_type,
             server_name=server_name,
             tool_name=tool_name,
             arguments_json=json.dumps(arguments),
             reason=reason,
+            tool_call_id=tool_call_id,
             status="pending",
         )
         session.add(req)

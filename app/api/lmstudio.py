@@ -20,16 +20,30 @@ def _root_url() -> str:
     return url
 
 
+def _v1_headers() -> dict[str, str]:
+    key = (get_settings().lm_studio_api_key or "").strip()
+    if key:
+        return {"Authorization": f"Bearer {key}"}
+    return {}
+
+
 async def _get(path: str, base: str | None = None, timeout: float = 8.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.get(f"{base or _v1_url()}{path}")
+        r = await client.get(
+            f"{base or _v1_url()}{path}",
+            headers=_v1_headers(),
+        )
         r.raise_for_status()
         return r.json()
 
 
 async def _post(path: str, body: dict, base: str | None = None, timeout: float = 30.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.post(f"{base or _v1_url()}{path}", json=body)
+        r = await client.post(
+            f"{base or _v1_url()}{path}",
+            json=body,
+            headers=_v1_headers(),
+        )
         r.raise_for_status()
         return r.json()
 

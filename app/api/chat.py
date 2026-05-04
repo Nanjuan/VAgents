@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
@@ -14,6 +16,7 @@ from app.tools.gateway import ToolGateway
 from app.mcp_client.client_manager import MCPClientManager
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
@@ -66,7 +69,14 @@ async def chat(
     )
 
     orchestrator = _build_orchestrator()
-    result = await orchestrator.run_turn(context, body.message, session)
+    try:
+        result = await orchestrator.run_turn(context, body.message, session)
+    except Exception as e:
+        logger.exception("chat turn failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Model or tool pipeline failed: {e}",
+        ) from e
     return result
 
 

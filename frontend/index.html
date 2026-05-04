@@ -4,34 +4,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VAgents</title>
-  <link rel="stylesheet" href="/ui/style.css" />
+  <link rel="stylesheet" href="/ui/style.css?v=3" />
 </head>
 <body>
 <div id="app">
 
-  <!-- ══════════ SIDEBAR ══════════ -->
   <aside id="sidebar">
 
     <div id="sidebar-top">
       <span id="logo">VAgents</span>
-      <div id="nav-tabs">
-        <button id="tab-chat" class="nav-tab active">Chat</button>
-        <button id="tab-tools" class="nav-tab">Tools</button>
-      </div>
     </div>
 
-    <!-- CHAT PANEL -->
-    <div id="chat-panel">
+    <nav id="sidebar-tabs" role="tablist">
+      <button id="tab-chat" class="tab active" role="tab">Chats</button>
+      <button id="tab-tools" class="tab" role="tab">Tools</button>
+    </nav>
+
+    <div id="chat-panel" class="sidebar-panel">
+
       <div id="new-chat-bar">
-        <button id="new-chat-btn">+ New Chat</button>
+        <button id="new-chat-btn">+ New chat</button>
       </div>
 
-      <div id="new-chat-form">
+      <div id="new-chat-form" class="hidden">
         <input id="new-chat-name" type="text" placeholder="Chat name" maxlength="60" />
         <select id="new-chat-profile"></select>
-        <div class="row-btns">
+        <div id="new-chat-actions">
           <button id="new-chat-confirm">Create</button>
-          <button id="new-chat-cancel" class="btn-ghost">Cancel</button>
+          <button id="new-chat-cancel">Cancel</button>
         </div>
       </div>
 
@@ -50,36 +50,34 @@
           <select id="lms-select" disabled>
             <option value="">— not connected —</option>
           </select>
-          <div class="row-btns">
+          <div id="lms-actions">
             <button id="lms-load-btn" disabled>Load</button>
             <button id="lms-use-btn" disabled>Use</button>
           </div>
           <div id="lms-msg"></div>
         </div>
       </div>
-    </div><!-- /chat-panel -->
 
-    <!-- TOOLS PANEL -->
-    <div id="tools-panel">
-      <div class="section-header">
-        <span>MCP Servers</span>
-        <button id="add-server-btn" class="btn-add">+ Add</button>
+    </div>
+
+    <div id="tools-panel" class="sidebar-panel hidden">
+      <div id="tools-panel-header">
+        <span class="panel-title">MCP Servers</span>
+        <button id="add-server-btn" title="Add server">+</button>
       </div>
       <div id="server-list"></div>
 
-      <div class="section-header">
-        <span>Native Tools</span>
+      <div id="native-section">
+        <span class="panel-title">Native tools</span>
+        <div id="native-list"></div>
       </div>
-      <div id="native-list"></div>
-    </div><!-- /tools-panel -->
+    </div>
 
   </aside>
 
-  <!-- ══════════ MAIN ══════════ -->
   <main id="main">
 
-    <!-- CHAT MAIN -->
-    <div id="chat-main">
+    <section id="chat-main">
       <div id="chat-header">
         <span id="chat-title"></span>
         <span id="chat-badge"></span>
@@ -93,109 +91,105 @@
       </div>
 
       <div id="input-area">
-        <textarea id="msg-input" placeholder="Message…  (Ctrl+Enter to send)" rows="2" disabled></textarea>
-        <button id="send-btn" disabled>Send</button>
-      </div>
-    </div>
-
-    <!-- TOOLS MAIN -->
-    <div id="tools-main">
-
-      <!-- empty state -->
-      <div id="tools-empty" class="empty-state-center">
-        <div class="empty-icon">⬡</div>
-        <p>Select a server or add a new one</p>
-      </div>
-
-      <!-- server detail -->
-      <div id="server-detail">
-        <div id="sd-header">
-          <div class="sd-title-row">
-            <span id="sd-name"></span>
-            <span id="sd-badge"></span>
-          </div>
-          <div class="sd-actions">
-            <button id="sd-discover-btn" class="btn-ghost">Discover Tools</button>
-            <button id="sd-edit-btn" class="btn-ghost">Edit</button>
-            <button id="sd-delete-btn" class="btn-ghost btn-danger">Delete</button>
-          </div>
-        </div>
-        <div id="sd-meta"></div>
-        <div id="sd-tools">
-          <div class="section-label">Tools</div>
-          <div id="sd-tools-list"></div>
+        <div id="input-inner">
+          <textarea id="msg-input" placeholder="Message…  (Ctrl+Enter to send)" rows="2" disabled></textarea>
+          <button id="send-btn" disabled>Send</button>
         </div>
       </div>
+    </section>
 
-      <!-- add / edit form -->
-      <div id="server-form">
-        <div id="sf-title">Add MCP Server</div>
+    <section id="tools-main" class="hidden">
 
-        <div id="sf-fields">
-          <label>Name <small>(lowercase_underscores)</small>
-            <input id="sf-name" type="text" placeholder="my_mcp_server" />
+      <div id="tools-empty" class="tools-state">
+        <div class="empty-icon">⬢</div>
+        <p>Select a server, or add a new one</p>
+      </div>
+
+      <div id="server-detail" class="hidden">
+        <div class="sd-header">
+          <h2 id="sd-name"></h2>
+          <span id="sd-badge"></span>
+        </div>
+        <div id="sd-meta" class="sd-meta"></div>
+        <div class="sd-actions">
+          <button id="sd-discover-btn">Discover tools</button>
+          <button id="sd-edit-btn">Edit</button>
+          <button id="sd-delete-btn" class="danger">Delete</button>
+        </div>
+        <h3 class="section-heading">Tools</h3>
+        <div id="sd-tools-list"></div>
+      </div>
+
+      <div id="server-form" class="hidden">
+        <h2 id="sf-title">Add MCP Server</h2>
+
+        <div class="form-grid">
+          <label class="form-row">
+            <span class="form-label">Name</span>
+            <input id="sf-name" type="text" placeholder="my_server" />
           </label>
 
-          <label>Description
+          <label class="form-row">
+            <span class="form-label">Description</span>
             <input id="sf-desc" type="text" placeholder="What this server does" />
           </label>
 
-          <label>Transport
+          <label class="form-row">
+            <span class="form-label">Transport</span>
             <select id="sf-transport">
-              <option value="stdio">stdio — local process</option>
-              <option value="streamable_http">streamable_http — remote URL</option>
+              <option value="stdio">stdio</option>
+              <option value="http">http</option>
             </select>
           </label>
 
-          <div id="sf-stdio">
-            <label>Command
-              <input id="sf-command" type="text" placeholder="python" />
-            </label>
-            <label>Args <small>(one per line)</small>
-              <textarea id="sf-args" rows="3" placeholder="./app/mcp_servers/examples/my_server.py"></textarea>
-            </label>
+          <div id="sf-stdio" class="form-row">
+            <span class="form-label">Command &amp; args</span>
+            <input id="sf-command" type="text" placeholder="python" />
+            <textarea id="sf-args" rows="3" placeholder="One arg per line"></textarea>
           </div>
 
-          <div id="sf-http">
-            <label>URL
-              <input id="sf-url" type="text" placeholder="http://localhost:8088/mcp" />
-            </label>
+          <div id="sf-http" class="form-row hidden">
+            <span class="form-label">URL</span>
+            <input id="sf-url" type="text" placeholder="https://example.com/mcp" />
           </div>
 
-          <label>Allowed Profiles <small>(one per line)</small>
-            <textarea id="sf-profiles" rows="3" placeholder="cybersecurity_agent&#10;general_assistant"></textarea>
+          <label class="form-row">
+            <span class="form-label">Allowed profiles</span>
+            <textarea id="sf-profiles" rows="3" placeholder="One profile per line"></textarea>
           </label>
 
-          <label>Env Vars <small>(KEY=value, one per line)</small>
-            <textarea id="sf-env" rows="2" placeholder="MY_VAR=value"></textarea>
+          <label class="form-row">
+            <span class="form-label">Environment</span>
+            <textarea id="sf-env" rows="3" placeholder="KEY=value"></textarea>
           </label>
 
-          <label class="label-inline">
-            <input id="sf-approval" type="checkbox" checked />
-            Require approval before tool runs
+          <label class="form-row inline">
+            <input id="sf-approval" type="checkbox" />
+            <span>Require approval before tool execution</span>
           </label>
 
-          <div class="field-row">
-            <label>Timeout (s)
-              <input id="sf-timeout" type="number" value="60" min="5" max="600" />
-            </label>
-            <label>Output limit (chars)
-              <input id="sf-limit" type="number" value="20000" min="1000" />
-            </label>
-          </div>
+          <label class="form-row">
+            <span class="form-label">Timeout (seconds)</span>
+            <input id="sf-timeout" type="number" min="1" />
+          </label>
+
+          <label class="form-row">
+            <span class="form-label">Output limit (chars)</span>
+            <input id="sf-limit" type="number" min="100" />
+          </label>
         </div>
 
-        <div class="row-btns" style="margin-top:20px;">
-          <button id="sf-save-btn" class="btn-primary">Save Server</button>
-          <button id="sf-cancel-btn" class="btn-ghost">Cancel</button>
+        <div class="form-actions">
+          <button id="sf-save-btn" class="primary">Save</button>
+          <button id="sf-cancel-btn">Cancel</button>
+          <span id="sf-msg"></span>
         </div>
-        <div id="sf-msg"></div>
       </div>
 
-    </div><!-- /tools-main -->
+    </section>
 
   </main>
 </div>
-<script src="/ui/app.js"></script>
+<script src="/ui/app.js?v=3"></script>
 </body>
 </html>
