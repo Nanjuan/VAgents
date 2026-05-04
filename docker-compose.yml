@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  vagents:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - vagents_data:/app/data
+    env_file: .env
+
+volumes:
+  vagents_data:

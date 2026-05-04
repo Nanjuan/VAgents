@@ -1,0 +1,32 @@
+mcp:
+  enabled: true
+  allowed_transports: [stdio, streamable_http]
+  legacy_sse_enabled: false
+  require_server_allowlist: true
+  require_profile_allowlist: true
+
+  stdio:
+    allow_arbitrary_commands: false
+    allowed_server_commands: [python, uv, node, npx]
+    block_shell: true
+
+  http:
+    allow_remote_servers: false
+    allowed_hosts: ["127.0.0.1", "localhost"]
+    require_auth_for_remote: true
+
+  tool_calls:
+    validate_input_schema: true
+    default_timeout_seconds: 60
+    max_output_chars: 20000
+    log_arguments: true
+    log_results: true
+    redact_secrets: true
+
+  blocked_behaviors:
+    - unauthorized_access
+    - credential_theft
+    - malware_creation
+    - destructive_actions_without_approval
+    - data_exfiltration
+    - unsafe_system_modification

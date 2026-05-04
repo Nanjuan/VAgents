@@ -1,0 +1,12 @@
+tool_groups:
+  general:
+    - http_get_headers
+
+  files:
+    - list_workspace_files
+    - read_workspace_file
+
+  security:
+    - parse_nmap_xml
+    - check_ssl_cert
+    - dns_lookup

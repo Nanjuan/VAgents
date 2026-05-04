@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m py_compile app/config/settings.py app/db/models.py app/db/database.py app/llm/base.py app/llm/anthropic_provider.py app/llm/openai_provider.py app/llm/ollama_provider.py app/llm/openai_compatible_provider.py app/llm/router.py)",
+      "Bash(python3 -m py_compile app/tools/schemas.py app/tools/registry.py app/tools/runner.py app/tools/validators.py app/tools/manager.py app/tools/gateway.py)",
+      "Bash(python3 -m py_compile app/mcp_client/schemas.py app/mcp_client/result_normalizer.py app/mcp_client/permissions.py app/mcp_client/tool_adapter.py app/mcp_client/server_registry.py app/mcp_client/client_manager.py)",
+      "Bash(python3 -m py_compile app/mcp_servers/examples/simple_notes_server.py app/mcp_servers/examples/project_files_server.py app/mcp_servers/examples/cybersecurity_lab_server.py app/mcp_servers/examples/website_design_server.py)",
+      "Bash(python3 -m py_compile app/agent/context.py app/agent/memory.py app/agent/prompts.py app/agent/profile_manager.py app/agent/orchestrator.py)",
+      "Bash(python3 -m py_compile app/security/permissions.py app/security/approvals.py app/security/audit.py app/security/sandbox.py)",
+      "Bash(python3 -m py_compile app/api/chat.py app/api/tools.py app/api/mcp.py app/api/profiles.py app/api/projects.py app/api/audit.py app/main.py)"
+    ]
+  }
+}

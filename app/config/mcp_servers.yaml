@@ -1,0 +1,48 @@
+mcp_servers:
+  local_filesystem:
+    enabled: true
+    description: "Safe workspace file access"
+    transport: stdio
+    command: python
+    args: ["./app/mcp_servers/examples/project_files_server.py"]
+    env: {}
+    allowed_profiles: [general_assistant, coding_agent, cybersecurity_agent]
+    require_approval: true
+    timeout_seconds: 60
+    tool_output_limit_chars: 20000
+
+  local_notes:
+    enabled: true
+    description: "Local in-memory notes"
+    transport: stdio
+    command: python
+    args: ["./app/mcp_servers/examples/simple_notes_server.py"]
+    env: {}
+    allowed_profiles: [general_assistant, research_agent]
+    require_approval: false
+    timeout_seconds: 30
+    tool_output_limit_chars: 10000
+
+  cybersecurity_lab_tools:
+    enabled: true
+    description: "Authorized lab security utilities"
+    transport: stdio
+    command: python
+    args: ["./app/mcp_servers/examples/cybersecurity_lab_server.py"]
+    env: {}
+    allowed_profiles: [cybersecurity_agent]
+    require_approval: true
+    timeout_seconds: 120
+    tool_output_limit_chars: 30000
+
+  website_design_tools:
+    enabled: false
+    description: "Website design utilities"
+    transport: stdio
+    command: python
+    args: ["./app/mcp_servers/examples/website_design_server.py"]
+    env: {}
+    allowed_profiles: [website_design_agent]
+    require_approval: false
+    timeout_seconds: 60
+    tool_output_limit_chars: 20000
