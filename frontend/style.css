@@ -347,6 +347,28 @@ button:disabled { cursor: not-allowed; }
 #tools-panel-header {
   border-bottom: 1px solid var(--border-soft);
 }
+.tools-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mcp-guide-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 0.2px;
+}
+.mcp-guide-link:hover {
+  text-decoration: underline;
+}
+.tools-empty-hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.tools-empty-hint a {
+  color: var(--accent);
+}
 .panel-title {
   font-size: 11px;
   font-weight: 600;
@@ -977,6 +999,97 @@ button:disabled { cursor: not-allowed; }
 #sf-msg { font-size: 12px; color: var(--text2); margin-left: 6px; }
 #sf-msg.error { color: var(--red); }
 #sf-msg.ok { color: var(--green); }
+
+/* ── MCP guide page (/ui/mcp-guide.html) ───────────────── */
+/* Main #app uses height:100vh + overflow:hidden — override so long guide content can scroll */
+html.mcp-guide-root,
+html.mcp-guide-root body.mcp-guide-body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+#app.guide-layout {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+  max-height: none;
+  overflow: visible;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+.guide-top {
+  margin-bottom: 28px;
+}
+.guide-back {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+.guide-back:hover {
+  text-decoration: underline;
+}
+.guide-top h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+.guide-lead {
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+.guide-main {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.guide-section h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--text);
+}
+.guide-section p,
+.guide-section li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text2);
+}
+.guide-section ul,
+.guide-section ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.guide-section code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+.guide-code {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.guide-code code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+  font-size: inherit;
+}
 
 /* ── Reduced motion ──────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

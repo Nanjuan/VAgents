@@ -1,7 +1,7 @@
 "use strict";
 
 const API = "";
-const APP_VERSION = "5";
+const APP_VERSION = "6";
 
 const LM_MAX_TOKENS_STORAGE = "vagents_lmstudio_max_tokens_by_model";
 

@@ -41,6 +41,20 @@ mcp_servers:
     require_approval: true
     timeout_seconds: 120
     tool_output_limit_chars: 30000
+  http_lab_tools:
+    enabled: true
+    description: Capability-scoped HTTP GET/HEAD and DNS resolve (no shell)
+    transport: stdio
+    command: python
+    args:
+      - ./app/mcp_servers/examples/http_lab_server.py
+    env: {}
+    allowed_profiles:
+      - cybersecurity_agent
+      - general_assistant
+    require_approval: true
+    timeout_seconds: 60
+    tool_output_limit_chars: 120000
   website_design_tools:
     enabled: false
     description: Website design utilities

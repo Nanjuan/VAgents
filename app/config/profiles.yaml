@@ -8,7 +8,7 @@ profiles:
     style: "technical"
     default_model: lmstudio-default
     allowed_tool_groups: [security, files]
-    allowed_mcp_servers: [cybersecurity_lab_tools, local_filesystem]
+    allowed_mcp_servers: [cybersecurity_lab_tools, local_filesystem, http_lab_tools]
     allowed_mcp_tools:
       - cybersecurity_lab_tools.summarize_security_headers
       - cybersecurity_lab_tools.format_pentest_finding
@@ -17,6 +17,9 @@ profiles:
       - cybersecurity_lab_tools.generate_test_plan
       - local_filesystem.list_workspace_files
       - local_filesystem.read_workspace_file
+      - http_lab_tools.http_fetch
+      - http_lab_tools.http_head
+      - http_lab_tools.dns_resolve
     system_rules:
       - "Only assist with authorized security work in scoped lab or pentest environments."
       - "Never support credential theft, malware creation, persistence, evasion, or unauthorized access."
@@ -32,12 +35,15 @@ profiles:
     style: "conversational"
     default_model: lmstudio-default
     allowed_tool_groups: [general, files]
-    allowed_mcp_servers: [local_notes, local_filesystem]
+    allowed_mcp_servers: [local_notes, local_filesystem, http_lab_tools]
     allowed_mcp_tools:
       - local_notes.search_notes
       - local_notes.add_note
       - local_filesystem.list_workspace_files
       - local_filesystem.read_workspace_file
+      - http_lab_tools.http_fetch
+      - http_lab_tools.http_head
+      - http_lab_tools.dns_resolve
     system_rules:
       - "Ask before writing or modifying files."
 

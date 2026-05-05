@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" class="mcp-guide-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP servers — VAgents</title>
+  <link rel="stylesheet" href="/ui/style.css?v=7" />
+</head>
+<body class="mcp-guide-body">
+<div id="app" class="guide-layout">
+
+  <header class="guide-top">
+    <a href="/ui/index.html" class="guide-back">← Back to chat</a>
+    <h1>Building MCP servers for VAgents</h1>
+    <p class="guide-lead">
+      MCP tools run as separate processes (usually stdio). The agent never gets a shell — each tool is a
+      small, explicit capability you define in Python.
+    </p>
+  </header>
+
+  <main class="guide-main">
+
+    <section class="guide-section">
+      <h2>How it fits together</h2>
+      <ul>
+        <li><strong>Your MCP server</strong> — a Python script using FastMCP that exposes <code>@mcp.tool()</code> functions.</li>
+        <li><strong><code>mcp_servers.yaml</code></strong> — registers how to start the server (<code>command</code>, <code>args</code>, timeouts, approval).</li>
+        <li><strong><code>profiles.yaml</code></strong> — each agent profile lists which servers and which <code>server.tool</code> names are allowed.</li>
+        <li><strong>Tool gateway</strong> — when the model requests a tool, VAgents routes it through the gateway to your MCP process (see <code>app/tools/gateway.py</code>).</li>
+      </ul>
+    </section>
+
+    <section class="guide-section">
+      <h2>Minimal FastMCP server</h2>
+      <p>Put new servers under <code>app/mcp_servers/examples/</code>. Pattern:</p>
+      <pre class="guide-code"><code>from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("my-server-name")
+
+@mcp.tool()
+def my_tool(arg: str) -&gt; dict:
+    """Docstring becomes the tool description for the model."""
+    return {"status": "success", "echo": arg}
+
+if __name__ == "__main__":
+    mcp.run()</code></pre>
+      <p>Run manually to verify it starts: <code>python app/mcp_servers/examples/your_server.py</code></p>
+    </section>
+
+    <section class="guide-section">
+      <h2>Register in <code>mcp_servers.yaml</code></h2>
+      <p>Add a block under <code>mcp_servers:</code>:</p>
+      <pre class="guide-code"><code>my_server:
+  enabled: true
+  description: Short human-readable description
+  transport: stdio
+  command: python
+  args:
+    - ./app/mcp_servers/examples/your_server.py
+  env: {}
+  allowed_profiles:
+    - cybersecurity_agent
+  require_approval: true
+  timeout_seconds: 60
+  tool_output_limit_chars: 20000</code></pre>
+      <p>Use <code>command: python</code> so VAgents resolves it to the same interpreter as the app (see MCP client manager). For HTTP remote MCP, use <code>transport: http</code> and <code>url:</code> instead of command/args.</p>
+    </section>
+
+    <section class="guide-section">
+      <h2>Allow tools in <code>profiles.yaml</code></h2>
+      <p>For each profile that should use the server:</p>
+      <ul>
+        <li>Add the server key to <code>allowed_mcp_servers</code> (e.g. <code>my_server</code>).</li>
+        <li>Add each tool as <code>server_name.function_name</code> in <code>allowed_mcp_tools</code> — function names match your Python <code>@mcp.tool()</code> defs.</li>
+      </ul>
+    </section>
+
+    <section class="guide-section">
+      <h2>Using the Tools tab in the UI</h2>
+      <ol>
+        <li>Open <strong>Tools</strong> in the sidebar.</li>
+        <li><strong>+</strong> opens the form to add or edit YAML-backed servers (same fields as above).</li>
+        <li>Select a server → <strong>Discover tools</strong> to confirm the process starts and list tools.</li>
+        <li>Use the toggle to enable/disable a server.</li>
+      </ol>
+      <p>REST API: <code>GET /api/mcp/servers</code>, <code>POST /api/mcp/servers?name=...</code>, etc.</p>
+    </section>
+
+    <section class="guide-section">
+      <h2>Safety</h2>
+      <p><code>app/config/safety.yaml</code> restricts which executables may <strong>launch</strong> MCP stdio servers (e.g. <code>python</code>, <code>node</code>). That is separate from what your Python code does inside the server.</p>
+      <p>Prefer <strong>capability-based</strong> tools (HTTP via httpx, file reads with path checks) instead of subprocess shells or arbitrary commands.</p>
+    </section>
+
+    <section class="guide-section">
+      <h2>Example: HTTP lab server</h2>
+      <p>This repo includes <code>app/mcp_servers/examples/http_lab_server.py</code> — tools <code>http_fetch</code>, <code>http_head</code>, and <code>dns_resolve</code> with URL/host validation and optional env <code>HTTP_LAB_ALLOWED_HOSTS</code>.</p>
+    </section>
+
+  </main>
+
+</div>
+</body>
+</html>
